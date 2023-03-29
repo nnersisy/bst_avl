@@ -137,7 +137,10 @@ protected:
     virtual void nodeSwap( AVLNode<Key,Value>* n1, AVLNode<Key,Value>* n2);
 
     // Add helper functions here
-
+    void moveLeft(AVLNode<Key, Value>* num);
+    void moveRight(AVLNode<Key, Value>* num);
+    void helpInsert(AVLNode<Key, Value>* i, AVLNode<Key, Value>* j);
+    void helpRemove(AVLNode<Key, Value>* num, int diff);
 
 };
 
@@ -149,6 +152,155 @@ template<class Key, class Value>
 void AVLTree<Key, Value>::insert (const std::pair<const Key, Value> &new_item)
 {
     // TODO
+    AVLNode<Key, Value>* newp = new AVLNode<Key, Value>(new_item.first, new_item.second, NULL);
+    AVLNode<Key, Value>* temp = static_cast<AVLNode<Key, Value>*>(this->root_);
+
+    if(this->root_ == NULL)
+    {
+        this->root_ = newp; //do i need this??????
+        newp->setBalance(0);
+        return;
+    }
+
+    while(true)
+    {
+        if(newp->getKey() < temp->getKey()) //left
+        {
+            if(temp->getLeft() == NULL)
+            {
+                temp->setLeft(newp);
+                newp->setParent(temp);
+                break;
+            }
+            else
+            {
+                temp = temp->getLeft();
+            }
+        }
+        else if(newp->getKey() > temp->getKey())//right
+        {
+            if(temp->getRight() == NULL)
+            {
+                temp->setRight(newp);
+                newp->setParent(temp);
+                break;
+            }
+            else
+            {
+                temp = temp->getRight();
+            }
+
+        }
+        else
+        {
+					  temp->setValue(new_item.second); // added jjust nowwwwwwwwwwwwwwwwwwwwwwww
+            delete newp;
+            return;
+        }
+    }
+
+    //point to parent ?????????????????????????????????
+    if(temp->getBalance() == -1 || temp->getBalance() == 1)
+    {
+        temp->setBalance(0);
+        return;
+    }
+    else
+    {
+        if(temp->getLeft() == newp) temp->setBalance(-1);
+        else temp->setBalance(1);
+
+        helpInsert(temp, newp);
+    }
+
+}
+
+//INSERT HELPER
+template<class Key, class Value>
+void AVLTree<Key, Value>:: helpInsert(AVLNode<Key, Value>* i, AVLNode<Key, Value>* j)
+{
+    // TODO
+    if(i == NULL || i->getParent() == NULL) return;
+
+    AVLNode<Key, Value>* x = i->getParent();
+
+    if(i == x->getLeft())
+    {
+        x->updateBalance(-1);
+
+        if(x->getBalance() == 0) return;
+        else if(x->getBalance() == -1) helpInsert(x, i);
+        else if(x->getBalance() == -2)
+        {
+            if(i->getLeft() == j)
+            {
+                moveRight(x);
+                i->setBalance(0);
+                x->setBalance(0);
+            }
+            else if(i->getLeft() != j)
+            {
+                moveLeft(i);
+                moveRight(x);
+
+                if(j->getBalance() == -1)
+                {
+                    i->setBalance(0);
+                    x->setBalance(1);
+                }
+                else if(j->getBalance() == 0)
+                {
+                    i->setBalance(0);
+                    x->setBalance(0);  
+                }
+                else if(j->getBalance() == 1)
+                {
+                    i->setBalance(-1);
+                    x->setBalance(0);
+                }
+                j->setBalance(0);
+            }
+        }
+    }
+    else if(i == x->getRight())
+    {
+        x->setBalance(x->getBalance() + 1);
+
+        if(x->getBalance() == 0) return;
+
+        else if(x->getBalance() == 1) helpInsert(x, i);
+        else if(x->getBalance() == 2)
+        {
+            if(i->getRight() == j)
+            {
+                moveLeft(x);
+                i->setBalance(0);
+                x->setBalance(0);
+            }
+            else if(i->getRight() != j)
+            {
+                moveRight(i);
+                moveLeft(x);
+
+                if(j->getBalance() == -1)
+                {
+                    i->setBalance(1);
+                    x->setBalance(0);
+                }
+                else if(j->getBalance() == 0)
+                {
+                    i->setBalance(0);
+                    x->setBalance(0);  
+                }
+                else if(j->getBalance() == 1)
+                {
+                    i->setBalance(0);
+                    x->setBalance(-1);
+                }
+                j->setBalance(0);
+            }
+        }
+    }
 }
 
 /*
@@ -159,7 +311,240 @@ template<class Key, class Value>
 void AVLTree<Key, Value>:: remove(const Key& key)
 {
     // TODO
+    AVLNode<Key, Value>* temp = static_cast<AVLNode<Key, Value>*>(this->internalFind(key));
+    AVLNode<Key, Value>* newp;
+
+    if(temp == NULL) return;
+
+    if(temp->getLeft() != NULL && temp->getRight() != NULL)
+    {
+        AVLNode<Key, Value>* pred = static_cast<AVLNode<Key, Value>*>(this->predecessor(temp));
+        nodeSwap(temp, pred);
+    }
+    AVLNode<Key, Value>* parent = temp->getParent(); //get what parent????????
+
+
+    if(temp->getLeft() != NULL) newp = temp->getLeft();
+    else newp = temp->getRight();
+
+    int diff;
+
+    if(newp != NULL) newp->setParent(parent);
+    if(parent == NULL) this->root_ = newp;
+    else if(temp != parent->getLeft())
+    {
+        parent->setRight(newp);
+        diff = -1;
+    }
+    else
+    {
+        parent->setLeft(newp);
+        diff = 1;
+    }
+
+    delete temp;
+    helpRemove(parent, diff);
+
 }
+
+//REMOVE HELPER
+template<class Key, class Value>
+void AVLTree<Key, Value>:: helpRemove(AVLNode<Key, Value>* num, int diff)
+{
+    // TODO
+    if(num == NULL) return;
+
+    AVLNode<Key, Value>* x = num->getParent();
+    int d = -1;
+
+    if(x != NULL)
+    {
+        if(num->getKey() < x->getKey()) d = 1;
+    }
+ 
+    if(num->getBalance() + diff == -2)
+    {
+        AVLNode<Key, Value>* newp = num->getLeft();
+
+        if(newp->getBalance() == 0)
+        {
+            moveRight(num);
+            num->setBalance(-1);
+            newp->setBalance(1);
+            //return;  
+        }
+        else if(newp->getBalance() == -1)
+        {
+            moveRight(num);
+            num->setBalance(0);
+            newp->setBalance(0);
+            helpRemove(x,d);
+        }
+        else if(newp->getBalance() == 1)
+        {
+            AVLNode<Key, Value>* temp = newp->getRight();
+            moveLeft(newp);
+            moveRight(num);
+
+            if(temp->getBalance() == 0)
+            {
+                num->setBalance(0);
+                newp->setBalance(0);
+                temp->setBalance(0);
+            }
+            else if(temp->getBalance() == 1)
+            {
+                num->setBalance(0);
+                newp->setBalance(-1);
+                temp->setBalance(0);
+            }
+            else if(temp->getBalance() == -1)
+            {
+                num->setBalance(1);
+                newp->setBalance(0);
+                temp->setBalance(0);
+            }
+						helpRemove(x,d);
+        }
+                
+    }
+
+    else if(num->getBalance() + diff == 2)
+    {
+        AVLNode<Key, Value>* newp = num->getRight();
+
+        if(newp->getBalance() == 0)
+        {
+            moveLeft(num);
+            num->setBalance(1);
+            newp->setBalance(-1);
+           // return;  
+        }
+        else if(newp->getBalance() == 1)
+        {
+            moveLeft(num);
+            num->setBalance(0);
+            newp->setBalance(0);
+            helpRemove(x,d);
+        }
+        else if(newp->getBalance() == -1)
+        {
+            AVLNode<Key, Value>* temp = newp->getLeft();
+            moveRight(newp);
+            moveLeft(num);
+
+            if(temp->getBalance() == 0)
+            {
+                num->setBalance(0);
+                newp->setBalance(0);
+                temp->setBalance(0);
+            }
+            else if(temp->getBalance() == 1)
+            {
+                num->setBalance(-1);
+                newp->setBalance(0);
+                temp->setBalance(0);
+            }
+            else if(temp->getBalance() == -1)
+            {
+                num->setBalance(0);
+                newp->setBalance(1);
+                temp->setBalance(0);
+            }
+        }
+    }
+
+    else if(num->getBalance() + diff == -1)
+    {
+        num->setBalance(-1);
+    }
+
+    else if(num->getBalance() + diff == 0)
+    {
+        num->setBalance(0);
+        helpRemove(x,d);
+    }
+}
+
+
+//MOVE LEFT----------------------------------------
+template<class Key, class Value>
+void AVLTree<Key, Value>:: moveLeft(AVLNode<Key, Value>* num)
+{
+    // TODO
+    AVLNode<Key, Value>* parent = num->getParent();
+    AVLNode<Key, Value>* child1 = num->getRight();
+    AVLNode<Key, Value>* child2 = child1->getLeft();
+
+    child1->setParent(parent);
+		
+		if(num->getParent() == NULL)
+    {
+        this->root_ = num->getRight();
+        child1->setLeft(num);
+        num->setParent(child1);
+        num->setRight(child2);
+    }
+    else if(num == parent->getLeft())
+    {
+        parent->setLeft(child1);
+        child1->setLeft(num);
+        num->setParent(child1);
+        num->setRight(child2);
+    }
+    else if(num == parent->getRight())
+    {
+        parent->setRight(child1);
+        child1->setLeft(num);
+        num->setParent(child1);
+        num->setRight(child2); 
+    }
+
+
+
+    if(child2 != NULL) child2->setParent(num);
+
+
+}
+
+//MOVE RIGHT----------------------------------------
+template<class Key, class Value>
+void AVLTree<Key, Value>:: moveRight(AVLNode<Key, Value>* num)
+{
+    // TODO
+    AVLNode<Key, Value>* parent = num->getParent();
+    AVLNode<Key, Value>* child1 = num->getLeft();
+		AVLNode<Key, Value>* child2 = child1->getRight();
+
+    child1->setParent(parent);
+
+	  if(num->getParent() == NULL)
+    {
+        this->root_ = child1;
+        child1->setRight(num);
+        num->setParent(child1);
+        num->setLeft(child2);
+    }
+    else if(num == parent->getLeft())
+    {
+        parent->setLeft(child1);
+        child1->setRight(num);
+        num->setParent(child1);
+        num->setLeft(child2);
+    }
+    else if(num == parent->getRight())
+    {
+        parent->setRight(child1);
+        child1->setRight(num);
+        num->setParent(child1);
+        num->setLeft(child2); 
+    }
+
+    if(child2 != NULL) child2->setParent(num);
+
+
+}
+
 
 template<class Key, class Value>
 void AVLTree<Key, Value>::nodeSwap( AVLNode<Key,Value>* n1, AVLNode<Key,Value>* n2)
